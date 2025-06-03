@@ -1,0 +1,3 @@
+#TEMPAT NARUH PYTHON
+
+BEbas yEashh
