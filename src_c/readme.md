@@ -1,3 +1,3 @@
-# My Project
+# Tempat naruh C
 
-Ini adalah deskripsi project saya.
+Bebas semua C boleh.
