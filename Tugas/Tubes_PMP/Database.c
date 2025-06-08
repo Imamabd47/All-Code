@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
+#include <ctype.h>
 
 //Struct
 
@@ -39,6 +41,83 @@ void input_string(char *arr){
     }  
 }
 
+//Utility Umum
+int input_integer() {
+    char buffer[100];
+    int valid = 0;
+    int angka;
+
+    while (!valid) {
+        if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+            // Hapus newline jika ada
+            buffer[strcspn(buffer, "\n")] = 0;
+            
+            int i = 0;
+            // Cek string kosong
+            if (buffer[0] == '\0') {
+                printf("Input tidak boleh kosong. Silakan coba lagi.\n");
+                printf("\nperintah< ");
+                continue;
+            }
+            
+            // Cek tanda minus di depan (boleh 1 kali)
+            if (buffer[0] == '-') i = 1;
+            
+            valid = 1; // Asumsi valid
+            for (; i < (int)strlen(buffer); i++) {
+                if (!isdigit(buffer[i])) {
+                    valid = 0;
+                    printf("Input harus berupa angka bulat.\n");
+                    printf("\nperintah< ");
+                    break;
+                }
+            }
+            
+            if (valid) {
+                angka = atoi(buffer);
+                return angka;
+            }
+        }
+        else {
+            printf("Terjadi kesalahan input. Silakan coba lagi.\n");
+            printf("\nperintah< ");
+            // Clear error stdin
+            clearerr(stdin);
+        }
+    }
+    return 0; // Tidak akan sampai sini, tapi agar compiler aman
+}
+
+// Eror Display kalo blm ada file dimuat 
+void eror(){
+    printf("\nBelum ada File yang dimuat, Fitur Tidak bisa digunakan!!\n\n");
+}
+
+void reset(){
+    struct pegawai *temp = first;
+    while(temp != NULL){
+        struct pegawai *next = temp -> next;
+        free(temp);
+        temp = next;
+    }
+    first = NULL;
+    Data_Pegawai = NULL;
+}
+
+
+void list2file(char *nama_file){
+    struct pegawai *temp = first;
+    FILE *a;
+    a = fopen(nama_file,"w");
+    fprintf(a,"\"Nama\",\"shift_maks\",\"Preferensi_shift\"\n");
+    while (temp!= NULL){
+        fprintf(a,"%s,%d,%s\n",temp->nama,temp->maks_shift,temp->preferensi_shift);
+        temp = temp->next;
+    }
+    fclose(a);
+    printf("Data telah tersimpan dalam file %s!!\n\n",nama_file);
+}
+
 //Penentu hari
 void preferensi_hari(char *arr,char *dest){
     int T[3]={0};
@@ -72,6 +151,18 @@ void preferensi_hari(char *arr,char *dest){
         strcpy(dest,"Pagi");  //1 pagi
 }
 
+//Fungsi Status Display
+void status_disp(char *nama_file, int autosave_param,int *choice){
+    if (autosave_param){
+       printf("Status:\nFile Yang Dimuat< %s\nAutosave Status< Aktif\n\nPerintah< ",nama_file);
+       *choice = input_integer();
+    }
+    else{
+        printf("Status:\nFile Yang Dimuat< %s\nAutosave Status< Nonaktif\n\nPerintah< ",nama_file);
+        *choice = input_integer();
+    }
+}
+
 //Mengubah File Menjadi Linked List
 void file2list(char *data){
     struct pegawai *temp = malloc(sizeof(struct pegawai));
@@ -88,7 +179,9 @@ void file2list(char *data){
     }
     //Ambil nama
     char *token ;
-    token = strtok(data,",");
+    char buffer_data[256];
+    strcpy(buffer_data,data);
+    token = strtok(buffer_data,",");
     strcpy(temp->nama,token);
     //Ambil Maks Shift
     token = strtok(NULL,",");
@@ -100,42 +193,81 @@ void file2list(char *data){
 }
 
 //Fungsi utama Ambil data dari file csv
-void load_data(char *nama_file){
-    FILE *csv1;
-    char data[256];
-
-    csv1 = fopen(nama_file,"r");
-    if (csv1 == NULL){
-        printf("Data belum ada, Tidak Berhasil Memuat File!!");
+void load_data(char *nama_file,char *nama_file_default){
+    if (strcasecmp(nama_file,"NONE")==0){
+        eror();
     }
     else{
-        fgets(data,256,csv1);
-        while (fgets(data,256,csv1)!=NULL){
-            file2list(data);
+        FILE *csv1;
+        char data[256];
+
+        csv1 = fopen(nama_file,"r");
+        if (csv1 == NULL){
+            int choice=0;
+            printf("Data belum ada, Tidak Berhasil Memuat File!!\n\n");
+            strcpy(nama_file,nama_file_default);
+            while (choice!=2&&choice!=1){
+                printf("Apakah ingin membuat file baru??\n[1]Ya\n[2]Tidak\n\n");
+                status_disp(nama_file,0,&choice);
+                switch (choice){
+                case 2:
+                    printf("\n");
+                    break;
+                case 1:
+                    reset();
+                    printf("\nMasukkan nama File yang ingin dibuat< ");
+                    input_string(nama_file);printf("\n");
+                    strcpy(nama_file_default,nama_file);
+                    csv1 = fopen(nama_file,"w");
+                    fprintf(csv1,"\"nama\",\"shift_maks\",\"Preferensi_shift\"\n");
+                    fclose(csv1);
+                    break;
+                default:
+                    printf("Perintah yang anda Masukkan Salah!!!Tolong Input dengan BenarT_T\n\n");
+                    break;
+                }
+            }
         }
-        printf("Data Berhasi Dimuat!!\n\n");
-        fclose(csv1);
+        else{
+            reset();
+            strcpy(nama_file_default,nama_file);
+            fgets(data,256,csv1);
+            while (fgets(data,256,csv1)!=NULL){
+                file2list(data);
+            }
+            printf("Data Berhasi Dimuat!!\n\n");
+            fclose(csv1);
+        }
     }
 }
 
 //Fungsi Utama Menampilkan linked list
-void Tampil(){
-    struct pegawai *temp = first;
-    printBanner("DATA PEGAWAI",'=',100);
-    printf("%-36s%-39s%-25s\n","Nama Pegawai","Maksimal Shift(Per Minggu)","Preferensi Shift");
-    while (temp != NULL){
-        printf("%-36s%11s%d%27s%-25s\n",temp->nama," ",temp->maks_shift," ",temp->preferensi_shift);
-        temp = temp -> next;
+void Tampil(char *nama_file){
+    if (strcasecmp(nama_file,"NONE")==0){
+        eror();
     }
-    printf("\n");
+    else if (Data_Pegawai == NULL){
+        printf("\nFile masih belum memiliki data!!\n\n");
+    }
+    else{
+        struct pegawai *temp = first;
+        printBanner("DATA PEGAWAI",'=',100);
+        printf("%-36s%-39s%-25s\n","Nama Pegawai","Maksimal Shift(Per Minggu)","Preferensi Shift");
+        while (temp != NULL){
+            printf("%-36s%11s%d%27s%-25s\n",temp->nama," ",temp->maks_shift," ",temp->preferensi_shift);
+            temp = temp -> next;
+        }
+        printf("\n");
+    }
 }
 
 //Fungsi Menambah data
-void tambah(){
+void tambah(int autosave_param,char *nama_file){
     struct pegawai *temp = malloc(sizeof(struct pegawai));
     char response[100];
     if (Data_Pegawai == NULL){
         temp-> before = NULL;
+        first = temp;
     }
     else{
         temp -> before = Data_Pegawai;
@@ -144,48 +276,80 @@ void tambah(){
     temp->next = NULL;
     //Memasukkan nama dari pegawai
     printf("\nMasukkan Nama dari Pegawai Baru< ");
-    fgets(temp->nama,50,stdin);input_string(temp->nama);
+    ;input_string(temp->nama);
     //Memasukkan jumlah maksimal shift yang diminta pegawai
     printf("Masukkan jumlah maksimal shift yang disanggupi pegawai< ");
-    scanf("%d",&(temp->maks_shift));getchar();
+    temp->maks_shift = input_integer();
     //Memasukkan Preferensi Hari dari pegawai
     printf("Masukkan preferensi bagian shift dari pegawai< ");
     input_string(response);
     preferensi_hari(response,temp->preferensi_shift);
     Data_Pegawai = temp;
     printf("Data pegawai atas nama %s berhasil ditambahkan",temp->nama);
+    //Jika Autosave menyala, akan langsung update csv 
+    if (autosave_param){
+        list2file(nama_file);
+    }
 }
 
 //Fungsi Menghapus Data
-void hapus(){
-    struct pegawai *temp = first;
-    struct pegawai *temp_r;
-    struct pegawai *temp_l;
-    int i = 1;
-    char nama_pegawai[100];
-    printf("\nNama Pegawai yang ada dalam data:\n");
-    while (temp != NULL){
-        printf("[%d]%s\n",i,temp->nama);
-        temp = temp->next;
-        i++;
+void hapus(int autosave_param,char *nama_file){
+    if (Data_Pegawai == NULL){
+       printf("\nFile masih belum memiliki data!!");
     }
-    temp = first;
-    printf("\nMasukkan nama pegawai yang ingin dihapus dari data< ");
-    fgets(nama_pegawai,100,stdin);input_string(nama_pegawai);
-    while (temp!=NULL){
-        if (strcmp(nama_pegawai,temp->nama)==0){
-            if (temp==first){
+    else{
+        int kembali = 0;
+        struct pegawai *temp ;
+        int find = 0;
+        int i;
+        char nama_pegawai[100];
+        while (!find){
+            printf("\nNama Pegawai yang ada dalam data:\n");
+            temp = first;
+            i = 1;
+            while (temp != NULL){
+                printf("[%d]%s\n",i,temp->nama);
+                temp = temp->next;
+                i++;
+            }
+            printf("[0]Ketik \"Kembali\" untuk kembali ke menu utama\n");
+            printf("\nMasukkan nama pegawai yang ingin dihapus dari data< ");
+            input_string(nama_pegawai);
+            temp = first;
+            while (temp!=NULL){
+                if (strcasecmp(nama_pegawai,temp->nama)==0){
+                    find = 1;
+                    break;
+                }
+                temp = temp->next;
+            }
+            if (strcasecmp(nama_pegawai,"Kembali")==0){
+                find = 1;
+                kembali= 1;
+            }
+            if (!find){
+                printf("\nNama yang ingin dihapus tidak terdaftar dalam data!!\n");
+            }
+        }
+        if (!kembali){
+            struct pegawai *temp_r;
+            struct pegawai *temp_l;
+            if (first == Data_Pegawai){ //Kalau data nya cuma 1 dan kenak hapus
+                first = NULL;
+                Data_Pegawai = NULL;
+                }
+            else if(temp==first){ //Kalau yang dihapus data paling kiri, data lebih dari 1
                 temp_r = temp->next;
                 temp_r -> before = NULL;
                 temp -> next = NULL;
                 first = temp_r;
-            }
-            else if (temp == Data_Pegawai){
+                }
+            else if (temp == Data_Pegawai){ //Kalau yang dihapus data paling kanan, data lebih dari 1
                 Data_Pegawai = temp->before;
                 Data_Pegawai -> next = NULL;
                 temp -> before = NULL;
-            }
-            else{
+                }
+            else{ //Kalau yang dihapus data ditengah, data lebih dari 1
                 temp_l = temp->before;
                 temp_r = temp->next;
                 temp->next = NULL;
@@ -193,124 +357,133 @@ void hapus(){
                 temp_l -> next = temp_r;
                 temp_r -> before = temp_l;
             }
+            //Kalo autosave nyala akan langsung update file
+            if (autosave_param){
+                list2file(nama_file);
+                }
             printf("Data pegawai atas nama %s berhasil dihapus",temp->nama);
             free(temp);
-            break;
         }
-        temp = temp->next;
     }  
 }
 
 //Fungsi Utama dari Edit
-void edit(){
-    int choice;
-    printf("\nPilih Opsi Pengeditan Data dibawah ini!!!\n[1]Tambah Data\n[2]Hapus Data\n[0]Kembali Ke Menu Utama Database\n\nPerintah< ");
-    scanf("%d",&choice);
-    switch (choice){
-    case 2:
-        hapus();
-        printf("\n\n");
-        break;
-    case 1:
-        tambah();
-        printf("\n\n");
-        break;
-    case 0:
-        break;  
-    default:
-        printf("Perintah yang anda Masukkan Salah!!!Tolong Input dengan BenarT_T");
-        break;
+void edit(char *nama_file, int autosave_param){
+    if (strcasecmp(nama_file,"NONE")==0){
+        eror();
     }
-}
-
-void list2file(char *nama_file){
-    struct pegawai *temp = first;
-    FILE *a;
-    a = fopen(nama_file,"w");
-    fprintf(a,"\"Nama\",\"shift_maks\",\"Preferensi_shift\"\n");
-    while (temp!= NULL){
-        fprintf(a,"%s,%d,%s\n",temp->nama,temp->maks_shift,temp->preferensi_shift);
-        temp = temp->next;
+    else{
+        int choice;
+        printf("\nPilih Opsi Pengeditan Data dibawah ini!!!\n[1]Tambah Data\n[2]Hapus Data\n[0]Kembali Ke Menu Utama Database\n\nPerintah< ");
+        choice = input_integer();
+        switch (choice){
+        case 2:
+            hapus(autosave_param,nama_file);
+            printf("\n\n");
+            break;
+        case 1:
+            tambah(autosave_param,nama_file);
+            printf("\n\n");
+            break;
+        case 0:
+            printf("\n");
+            break;  
+        default:
+            printf("Perintah yang anda Masukkan Salah!!!Tolong Input dengan BenarT_T\n");
+            edit(nama_file,autosave_param);
+            break;
+        }
     }
-    fclose(a);
-    printf("Data telah tersimpan dalam file %s!!\n\n",nama_file);
 }
 
 //Fungsi Utama Simpan
 void save(char *nama_file_def){
-    int choice;
-    printf("\nPilih Opsi Berikut: \n[1]Simpan dalam file baru\n[2]Update File lama\n[0]Kembali ke Menu Utama Database\n\nPerintah< ");
-    scanf("%d",&choice);getchar();
-    char nama_file[50];
-    switch (choice){
-    case 1:
-        printf("\nMasukkan nama file< ");
-        input_string(nama_file);
-        list2file(nama_file);
-        break;
-    case 2:
-        list2file(nama_file_def);
-        break;
-    default:
-        break;
-    } 
+    if (strcasecmp(nama_file_def,"NONE")==0){
+        eror();
+    }
+    else{
+        int choice;
+        printf("\nPilih Opsi Berikut: \n[1]Simpan dalam file baru\n[2]Update File lama\n[0]Kembali ke Menu Utama Database\n\nPerintah< ");
+        choice = input_integer();
+        char nama_file[50];
+        switch (choice){
+        case 1:
+            printf("\nMasukkan nama file< ");
+            input_string(nama_file);
+            list2file(nama_file);
+            break;
+        case 2:
+            list2file(nama_file_def);
+            break;
+        default:
+            break;
+        } 
+    }
 }
 
-void reset(){
-    struct pegawai *temp = first;
-    if (temp != NULL){
-        struct pegawai *temp_r = temp -> next;
-        struct pegawai *last = Data_Pegawai;
-        Data_Pegawai = NULL;
-        first = NULL;
-        while (temp_r != last){
-            free(temp);
-            temp_r = temp_r -> next;
-            temp = temp_r -> before;
-        }
-        free(temp);
-        free(last); 
-        last = NULL;
+void Fitur_display(int  autosave_param){
+    if (autosave_param){
+        printf("Perintah yang bisa anda Masukkan!!!\n");
+        printf("[1]Muat File\n[2]Tampilkan Data\n[3]Edit Data\n[4]Simpan Data\n[5]Muat Ulang File\n[6]Matikan Autosave\n[0]Keluar Database\n\n");
     }
+    else{
+        printf("Perintah yang bisa anda Masukkan!!!\n");
+        printf("[1]Muat File\n[2]Tampilkan Data\n[3]Edit Data\n[4]Simpan Data\n[5]Muat Ulang File\n[6]Nyalakan Autosave\n[0]Keluar Database\n\n");
+    }
+    
 }
 
 //Program Utama
 int main(){
     int input ;
-    char nama_file[100]="belum ada file yang dibaca!!";
-    
+    int autosave_param=0;
+    char nama_file[100]="NONE";
+    char nama_file_default[100]="NONE";
     printBanner("SELAMAT DATANG",'*',100);
-    printf("Perintah yang bisa anda Masukkan!!!\n");
-    printf("[1]Muat File\n[2]Tampilkan Data\n[3]Edit Data\n[4]Simpan Data\n[5]Muat Ulang File\n[0]Keluar Database\n\nPerintah< ");
-    scanf("%d",&input);
+    Fitur_display(autosave_param);
+    status_disp(nama_file,autosave_param,&input);
     while(input!=0){
         switch (input){
         case 1:
             //Memasukkan nama file
-            reset();
-            printf("Masukkan nama file pegawai< ");fgets(nama_file,100,stdin);
+            printf("\nMasukkan nama file pegawai< ");
             input_string(nama_file);
-            load_data(nama_file);
+            load_data(nama_file,nama_file_default);
             break;
         case 2:
-            Tampil();
+            Tampil(nama_file);
             break;
         case 3:
-            edit();
+            edit(nama_file,autosave_param);
             break;
         case 4:
             save(nama_file);
             break;
         case 5:
+            reset();
+            load_data(nama_file,nama_file_default);
+            break;
+        case 6:
+            if (strcasecmp(nama_file,"NONE")==0){
+                eror();
+            }
+            else{
+                autosave_param = !autosave_param;
+                if (autosave_param){
+                    printf("\nFitur Autosave telah dinyalakan\n\n");
+                }
+                else {
+                    printf("\nFitur Autosave telah dimatikan\n\n");
+                }
+            }
             break;
         case 0:
             break;
         default:
-            printf("Perintah yang anda Masukkan Salah!!!Tolong Input dengan BenarT_T\n");
+            printf("Perintah yang anda Masukkan Salah!!!Tolong Input dengan BenarT_T\n\n");
             break;
         }
-        printf("Perintah yang bisa anda Masukkan!!!\n");
-        printf("[1]Muat File\n[2]Tampilkan Data\n[3]Edit Data\n[4]Simpan Data\n[5]Muat Ulang File\n[0]Keluar Database\n\nPerintah< ");
-        scanf("%d",&input);
+        Fitur_display(autosave_param);
+        status_disp(nama_file,autosave_param,&input);
     }
 }

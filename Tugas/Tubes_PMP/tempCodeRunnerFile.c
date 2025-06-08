@@ -1,1 +1,1 @@
-gawa
+scanf
