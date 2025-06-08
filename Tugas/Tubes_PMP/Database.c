@@ -88,6 +88,55 @@ int input_integer() {
     return 0; // Tidak akan sampai sini, tapi agar compiler aman
 }
 
+//Utility Umum
+int input_integer_positif() {
+    char buffer[100];
+    int isValid = 0;
+    int hasil;
+
+    while (!isValid) {
+        if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+            // Hapus karakter newline
+            buffer[strcspn(buffer, "\n")] = '\0';
+
+            // Cek apakah string kosong
+            if (buffer[0] == '\0') {
+                printf("Input tidak boleh kosong. Silakan coba lagi.\n");
+                printf("\nMasukkan jumlah maksimal shift yang disanggupi pegawai< ");
+                continue;
+            }
+
+            int i = 0;
+            isValid = 1;
+            for (; buffer[i] != '\0'; i++) {
+                if (!isdigit(buffer[i])) {
+                    isValid = 0;
+                    printf("Input harus berupa angka bulat positif.\n");
+                    printf("\nMasukkan jumlah maksimal shift yang disanggupi pegawai< ");
+                    break;
+                }
+            }
+
+            if (isValid) {
+                hasil = atoi(buffer);
+                if (hasil <= 0) {
+                    printf("Input harus lebih besar dari nol.\n");
+                    printf("\nMasukkan jumlah maksimal shift yang disanggupi pegawai< ");
+                    isValid = 0;
+                } else {
+                    return hasil;
+                }
+            }
+        } else {
+            printf("Terjadi kesalahan input. Silakan coba lagi.\n");
+            printf("\nMasukkan jumlah maksimal shift yang disanggupi pegawai< ");
+            clearerr(stdin); // reset status error stdin
+        }
+    }
+    return 0; // fallback
+}
+
+
 // Eror Display kalo blm ada file dimuat 
 void eror(){
     printf("\nBelum ada File yang dimuat, Fitur Tidak bisa digunakan!!\n\n");
@@ -279,7 +328,7 @@ void tambah(int autosave_param,char *nama_file){
     ;input_string(temp->nama);
     //Memasukkan jumlah maksimal shift yang diminta pegawai
     printf("Masukkan jumlah maksimal shift yang disanggupi pegawai< ");
-    temp->maks_shift = input_integer();
+    temp->maks_shift = input_integer_positif();
     //Memasukkan Preferensi Hari dari pegawai
     printf("Masukkan preferensi bagian shift dari pegawai< ");
     input_string(response);
